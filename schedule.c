@@ -20,6 +20,7 @@ int importStaff(StaffDB staffDB, char *FILENAME){
     int staffCount = 0;
     printf("Number of Staff: ");
     scanf("%d", &staffCount);
+    staffDB.staffCount = staffCount;
     //fscanf(fp, "%d", &staffCount);
     printf("Staff Count: %d\n", staffCount);
     staffDB.dbInfo= makeArray(staffCount, sizeof(Employee));
@@ -31,6 +32,60 @@ int importStaff(StaffDB staffDB, char *FILENAME){
         }
     }
     printStaff(staffDB); //Check that the scan worked!
+    fclose(fp);
+    return 0;
+}
+
+/*Import a csv file of Employees and put them into the database
+* Takes a filename and staff database
+* Returns 0 if successful, 1 if unsuccesfful
+*/
+int importAvailability(StaffDB staffDB, char *AVAILABILITY){
+    FILE *fp = fopen(AVAILABILITY, "r");
+    if(!fp){
+        return -1;
+    }
+
+    //Variable to store entire lines
+    char line[2000];
+    //Variable to store columns
+    char *columns[6];
+    //Token variable?
+    char *token;
+
+    //Throw away the first line
+    fgets(line, sizeof(line), fp);
+
+
+    while(fgets(line, sizeof(line), fp)){
+        printf("LINE READ: %s\n", line);
+        int columnCount = 0;
+        token = strtok(line, ",");
+        while (token != NULL && columnCount < 6){
+
+            //Checking if the current section is within quotation marks
+            if(token[0] == '"'){
+                
+                while(token[strlen(token) - 1] != '"'){
+                    char nextToken[2000];
+                    token = strtok(NULL, ",");
+                    strcat(nextToken, token);
+                    strcat(nextToken, ",");
+                    strcat(token, nextToken);
+                }
+                memmove(token, token + 1, strlen(token));
+                token[strlen(token) - 1] = '\0';
+            }
+            columns[columnCount] = token;
+            columnCount++;
+            token=strtok(NULL, ",");
+        }
+        printf("%s\n", columns[0]);
+        
+    }
+
+
+    fclose(fp);
     return 0;
 }
 
@@ -73,7 +128,6 @@ void * makeArray(int arraySize, int elementSize){
 int getSize(void *array){
     return ((int *)array)[-1];
 }
-
 
 /*Frees an array created by MakeArray*/
 void freeArray(void *array){
