@@ -1,4 +1,7 @@
 #include "schedule.h"
+#define LINE_LENGTH 5000
+#define MAX_COLUMNS 6
+
 
 //This will create a databse variable for the user
 StaffDB createStaffDatabase(){
@@ -46,42 +49,64 @@ int importAvailability(StaffDB staffDB, char *AVAILABILITY){
         return -1;
     }
 
-    //Variable to store entire lines
-    char line[2000];
+    //Variable to store lines
+    char line[LINE_LENGTH];
     //Variable to store columns
-    char *columns[6];
-    //Token variable?
+    char *columns[MAX_COLUMNS];
+    //Token variable
     char *token;
 
-    //Throw away the first line
-    fgets(line, sizeof(line), fp);
+    //Throw away the header line
+    if(fgets(line, sizeof(line), fp) == NULL){
+        puts("Failed to read header line");
+        return 1;
+    }
 
 
     while(fgets(line, sizeof(line), fp)){
-        printf("LINE READ: %s\n", line);
+        line[strcspn(line, "\n")] = '\0'; //Remove newline character
+       // printf("LINE READ: %s\n", line);
         int columnCount = 0;
         token = strtok(line, ",");
-        while (token != NULL && columnCount < 6){
-
+        while (token != NULL && columnCount < MAX_COLUMNS){
             //Checking if the current section is within quotation marks
             if(token[0] == '"'){
-                
+                char nextToken[LINE_LENGTH];
+                strcpy(nextToken, token);
                 while(token[strlen(token) - 1] != '"'){
-                    char nextToken[2000];
                     token = strtok(NULL, ",");
-                    strcat(nextToken, token);
                     strcat(nextToken, ",");
-                    strcat(token, nextToken);
+                    strcat(nextToken, token);
                 }
-                memmove(token, token + 1, strlen(token));
-                token[strlen(token) - 1] = '\0';
+                //printf("NEXT TOKEN: %s\n", nextToken);
+                
+                //Remove quotation marks
+                memmove(nextToken, nextToken + 1, strlen(nextToken) -2);
+                nextToken[strlen(nextToken) - 1] = '\0';
+                
+                //Allocate space and then copy the full day availability into the column
+                columns[columnCount] = malloc(strlen(nextToken) + 1);
+                strcpy(columns[columnCount], nextToken);
             }
-            columns[columnCount] = token;
+            //For the last name
+            else{
+                //Allocate space and then copy the last name into the column
+                columns[columnCount] = malloc(strlen(token) + 1);
+                strcpy(columns[columnCount], token);
+            }
             columnCount++;
             token=strtok(NULL, ",");
         }
-        printf("%s\n", columns[0]);
-        
+        for(int i = 0;i < MAX_COLUMNS;i++){
+            printf("COLUMN %d: %s\n", i, columns[i]);
+        }
+
+        /*Put columns into the corresponding staff member's availability*/
+
+        //Once everything has been put into the databse, free the columns
+        for(int i = 0; i < MAX_COLUMNS;i++){
+            free(columns[i]);
+        }
     }
 
 
@@ -104,12 +129,13 @@ void printIndividualAvailability(StaffDB staffDB, char *lastName);
 //Prints all staff
 void printStaff(StaffDB staffDB){
     int size = getSize(staffDB.dbInfo);
-    printf("%s %20s %30s %50s\n", "FIRST NAME", "LAST NAME", "POSITION", "SHIFTS");
+    printf("%s, %s, %s, %s\n", "FIRST NAME", "LAST NAME", "POSITION", "SHIFTS");
     for(int i = 0;i<size;i++){
         printf("%s, %s, %s, %d\n",staffDB.dbInfo[i].lastName, staffDB.dbInfo[i].firstName, staffDB.dbInfo[i].position, staffDB.dbInfo[i].shifts);
     }
 }
-
+//Frees all associated memory with a staff database and voids the users variable
+void freeStaffDatabase(StaffDB staffdb);
 
 /*Dynamically creates an array of a specificed size
 * Requires the size of the array and element size as integers
