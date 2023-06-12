@@ -4,9 +4,10 @@
 
 
 //This will create a databse variable for the user
-StaffDB createStaffDatabase(){
+StaffDB createStaffDatabase(int staffCount){
     StaffDB db;
-    db.dbInfo=NULL;
+    db.dbInfo= makeArray(13, sizeof(Employee));
+    db.staffCount = staffCount;
     return db;
 }
 
@@ -19,18 +20,15 @@ int importStaff(StaffDB staffDB, char *FILENAME){
     if(!fp){
         return -1;
     }
-    
-    int staffCount = 0;
-    printf("Number of Staff: ");
-    scanf("%d", &staffCount);
-    staffDB.staffCount = staffCount;
-    //fscanf(fp, "%d", &staffCount);
-    printf("Staff Count: %d\n", staffCount);
-    staffDB.dbInfo= makeArray(staffCount, sizeof(Employee));
-    if(!staffDB.dbInfo) return 1;
+
+    printf("Staff Count: %d\n", staffDB.staffCount);
+    if(!staffDB.dbInfo){
+        puts("NO STAFF ARRAY");
+        return 1;
+    }
     //Scans from the csv file into the array of Employee Structs
     while(!feof(fp)){
-        for(int i = 0; i<staffCount;i++){
+        for(int i = 0; i<staffDB.staffCount;i++){
             fscanf(fp," %[^,], %[^,], %[^,], %d", staffDB.dbInfo[i].lastName, staffDB.dbInfo[i].firstName, staffDB.dbInfo[i].position, &staffDB.dbInfo[i].shifts);
         }
     }
@@ -78,7 +76,6 @@ int importAvailability(StaffDB staffDB, char *AVAILABILITY){
                     strcat(nextToken, ",");
                     strcat(nextToken, token);
                 }
-                //printf("NEXT TOKEN: %s\n", nextToken);
                 
                 //Remove quotation marks
                 memmove(nextToken, nextToken + 1, strlen(nextToken) -2);
@@ -97,11 +94,18 @@ int importAvailability(StaffDB staffDB, char *AVAILABILITY){
             columnCount++;
             token=strtok(NULL, ",");
         }
-        for(int i = 0;i < MAX_COLUMNS;i++){
+        /*for(int i = 0;i < MAX_COLUMNS;i++){
             printf("COLUMN %d: %s\n", i, columns[i]);
-        }
+        }*/
 
-        /*Put columns into the corresponding staff member's availability*/
+        /*Put columns into the corresponding staff member's availability below*/
+        int staffPosition = getStaffPos(staffDB, columns[0]);
+
+        /*Will add availability into each weekday here 
+        * Possibly inovlves casting, how to read indiviaul pieces of the string?
+        *
+        */
+
 
         //Once everything has been put into the databse, free the columns
         for(int i = 0; i < MAX_COLUMNS;i++){
@@ -120,6 +124,23 @@ int createSchedule(StaffDB staffDB);
 void printSchedule(StaffDB staffDB);
 //Print off the weekly availability for all employees
 void printAvailability(StaffDB staffDB);
+
+
+//Returns the position number of the staff member with the matching last name in O(n) time
+int getStaffPos(StaffDB staffDB, char *lastName){
+    int position = 0;
+    for(int i = 0;i < staffDB.staffCount ;i++){
+        if(strcmp(lastName, staffDB.dbInfo[i].lastName) == 0){
+            position = i;
+            break;
+        }
+    }
+    if(position == staffDB.staffCount){
+        return -1;
+    }    
+    return position;
+}
+
 //Print off the weekly schedule for one employee
 void printIndividualSchedule(StaffDB staffDB, char *lastName);
 //Print off the weekly availablity for one employee
@@ -152,7 +173,7 @@ void * makeArray(int arraySize, int elementSize){
 
 /*Returns the integer size of an array created by MakeArray*/
 int getSize(void *array){
-    return ((int *)array)[-1];
+    return *(((int *)array) -1);
 }
 
 /*Frees an array created by MakeArray*/
