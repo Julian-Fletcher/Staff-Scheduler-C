@@ -1,6 +1,7 @@
 #include "schedule.h"
 #define LINE_LENGTH 5000
-#define MAX_COLUMNS 6
+#define MAX_WORKDAYS 5
+
 
 
 //This will create a databse variable for the user
@@ -46,77 +47,87 @@ int importAvailability(StaffDB staffDB, char *AVAILABILITY){
     if(!fp){
         return -1;
     }
-
-    //Variable to store lines
     char line[LINE_LENGTH];
-    //Variable to store columns
-    char *columns[MAX_COLUMNS];
-    //Token variable
+    char delimiter[] = ",";
     char *token;
+    char *tokenMemory;
+    char *lastName;
+    //array of weekday arrays to store availability
+    double **weekdays = makeArray(MAX_WORKDAYS, sizeof(double *));
+
 
     //Throw away the header line
     if(fgets(line, sizeof(line), fp) == NULL){
         puts("Failed to read header line");
         return 1;
     }
-
-
-    while(fgets(line, sizeof(line), fp)){
-        line[strcspn(line, "\n")] = '\0'; //Remove newline character
-       // printf("LINE READ: %s\n", line);
-        int columnCount = 0;
-        token = strtok(line, ",");
-        while (token != NULL && columnCount < MAX_COLUMNS){
-            //Checking if the current section is within quotation marks
+    while(fgets(line, sizeof(line), fp)) {
+        line[strcspn(line, "\n")] = '\0'; // Null terminate the string
+        token = strtok_r(line, delimiter, &tokenMemory);    //saves the location within line
+        int dayCounter = 0;
+        while (token != NULL && dayCounter < MAX_WORKDAYS){
             if(token[0] == '"'){
-                char nextToken[LINE_LENGTH];
-                strcpy(nextToken, token);
-                while(token[strlen(token) - 1] != '"'){
-                    token = strtok(NULL, ",");
-                    strcat(nextToken, ",");
-                    strcat(nextToken, token);
-                }
-                
-                //Remove quotation marks
-                memmove(nextToken, nextToken + 1, strlen(nextToken) -2);
-                nextToken[strlen(nextToken) - 1] = '\0';
-                
-                //Allocate space and then copy the full day availability into the column
-                columns[columnCount] = malloc(strlen(nextToken) + 1);
-                strcpy(columns[columnCount], nextToken);
-            }
-            //For the last name
+                puts("Tokenizing tokern");
+                weekdays[dayCounter] = processWeekday(staffDB, token);
+                dayCounter++;
+            }   
             else{
-                //Allocate space and then copy the last name into the column
-                columns[columnCount] = malloc(strlen(token) + 1);
-                strcpy(columns[columnCount], token);
+            lastName = malloc(strlen(token) + 1);
+            strcpy(lastName, token);
+            printf("Last Name: %s\n", lastName);
             }
-            columnCount++;
-            token=strtok(NULL, ",");
-        }
-        /*for(int i = 0;i < MAX_COLUMNS;i++){
-            printf("COLUMN %d: %s\n", i, columns[i]);
-        }*/
-
-        /*Put columns into the corresponding staff member's availability below*/
-        int staffPosition = getStaffPos(staffDB, columns[0]);
-
-        /*Will add availability into each weekday here 
-        * Possibly inovlves casting, how to read indiviaul pieces of the string?
-        *
-        */
-
-
-        //Once everything has been put into the databse, free the columns
-        for(int i = 0; i < MAX_COLUMNS;i++){
-            free(columns[i]);
+            token = strtok_r(NULL, delimiter, &tokenMemory);
         }
     }
 
 
     fclose(fp);
+    
     return 0;
 }
+
+                    
+                
+double * processWeekday(StaffDB staffDB, char *token){
+    int arraySize = 1;
+    int arrayPosition = 0;
+    char *newToken;
+    char *newTokenMemory;
+    char *delimiter = ",";
+    char *string;
+    printf("Token before cleaning: %s\n", token);
+    //Cleaning up the token for use
+    memmove(token, token + 1, strlen(token) -2);
+    token[strlen(token) - 1] = '\0';
+    printf("Token after cleaning: %s\n", token);
+
+    newToken = strtok_r(token, delimiter, &newTokenMemory);
+
+    printf("Token being converted: %s\n", newToken);
+
+    double *array = makeArray(arraySize, sizeof(double *));
+    array[arrayPosition] = strtod(newToken, &string);
+    printf("DOUBLE IN ARRAY: %.2f\n", array[arrayPosition]);
+    
+    while(newToken != NULL){
+        newToken = strtok_r(NULL, ", ", &newTokenMemory);
+        arraySize++;
+        arrayPosition++;
+        resizeArray(array, arraySize + 1, sizeof(double));
+        printf("SIZE: %d\n", getSize(array));
+        printf("ARRAY SIZE VAR %d\n", arraySize);
+        for(int i = 0; i < arraySize - 1; i++){
+            printf("%f\n", array[i]);
+        }
+        array[arrayPosition - 1] = strtod(newToken, &string);
+        puts("a");
+        printf("DOUBLE IN ARRAY: %.2f\n", array[arrayPosition]);
+    }
+
+
+   return NULL;
+}
+
 
 //This will generate a schedule based on the number of shifts required to be filled, and the days/hours that are available
 int createSchedule(StaffDB staffDB);
@@ -179,4 +190,58 @@ int getSize(void *array){
 /*Frees an array created by MakeArray*/
 void freeArray(void *array){
     free(((int *)array)-1);
+}
+
+void * resizeArray(void *array, int newArraySize, int elementSize){
+    puts("we");
+    int *originalArray = (((int *)array) - 1);
+    int *resizedArray = realloc(originalArray, (newArraySize * elementSize) + sizeof(int));
+    resizedArray[0] = newArraySize;
+    return (void *)resizeArray;
+}
+
+//Strtok-R????
+
+/* 
+ * public domain strtok_r() by Charlie Gordon
+ *
+ *   from comp.lang.c  9/14/2007
+ *
+ *      http://groups.google.com/group/comp.lang.c/msg/2ab1ecbb86646684
+ *
+ *     (Declaration that it's public domain):
+ *      http://groups.google.com/group/comp.lang.c/msg/7c7b39328fefab9c
+ */
+
+char* strtok_r(
+    char *str, 
+    const char *delim, 
+    char **nextp)
+{
+    char *ret;
+
+    if (str == NULL)
+    {
+        str = *nextp;
+    }
+
+    str += strspn(str, delim);
+
+    if (*str == '\0')
+    {
+        return NULL;
+    }
+
+    ret = str;
+
+    str += strcspn(str, delim);
+
+    if (*str)
+    {
+        *str++ = '\0';
+    }
+
+    *nextp = str;
+
+    return ret;
 }

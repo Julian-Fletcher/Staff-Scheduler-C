@@ -30,6 +30,8 @@ StaffDB createStaffDatabase(int staffCount);
 int importStaff(StaffDB staffDB, char *FILENAME);
 //This will import the availability of each staff member rom a csv file
 int importAvailability(StaffDB staffDB, char *AVAILABILITY);
+
+double * processWeekday(StaffDB staffDB, char *token);
 //This will generate a schedule based on the number of shifts required to be filled, and the days/hours that are available
 int createSchedule(StaffDB staffDB);
 //Returns the position number of the staff member with the matching last name
@@ -52,5 +54,12 @@ void freeStaffDatabase(StaffDB staffdb);
 
 /* Array Functions*/
 void * makeArray(int arraySize, int elementSize);
+void * resizeArray(void *array, int newArraySize, int elementSize);
 int getSize(void *array);
 void freeArray(void *array);
+
+
+char* strtok_r(
+    char *str, 
+    const char *delim, 
+    char **nextp);
